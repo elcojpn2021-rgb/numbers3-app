@@ -1,0 +1,13 @@
+{
+  "name": "ナンバーズ3AI予想",
+  "short_name": "N3AI予想",
+  "description": "過去2年間の当選データをAIが分析するナンバーズ3予想アプリ",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F3F4FC",
+  "theme_color": "#40428F",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
