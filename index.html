@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+<title>ナンバーズ3AI予想 | 3秒AIシリーズ</title>
+<meta name="description" content="過去2年間の当選データをAIが分析。頻出数字・月別傾向・偶奇パターン・レア数字を総合判断してナンバーズ3を予想します。" />
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#40428F" />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F3F4FC;
+    --bg-alt: #E8E9FA;
+    --card: #FFFFFF;
+    --pink-100: #E1E3FA;
+    --pink-300: #A9AEEA;
+    --pink-500: #6669C9;
+    --pink-700: #40428F;
+    --plum-900: #262848;
+    --plum-600: #565A82;
+    --gold-400: #C9A227;
+    --mint-400: #7FC2D9;
+    --shadow-soft: 0 8px 24px rgba(64, 66, 143, 0.14);
+    --radius-lg: 28px;
+    --radius-md: 18px;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--plum-900);
+    font-family: 'Noto Sans JP', sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  h1, h2, h3, .display {
+    font-family: 'Zen Maru Gothic', sans-serif;
+  }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 0 18px 80px; }
+
+  /* ---------- Header / Hero ---------- */
+  header.hero {
+    background: linear-gradient(160deg, var(--pink-300) 0%, var(--pink-500) 55%, var(--pink-700) 100%);
+    padding: 34px 18px 46px;
+    border-radius: 0 0 40px 40px;
+    color: #fff;
+    position: relative;
+    overflow: hidden;
+  }
+  header.hero::after {
+    content: "";
+    position: absolute; right: -40px; top: -40px;
+    width: 180px; height: 180px; border-radius: 50%;
+    background: rgba(255,255,255,0.12);
+  }
+  .brand-eyebrow {
+    font-size: 12px; letter-spacing: 0.14em; font-weight: 700;
+    opacity: 0.9; margin-bottom: 6px;
+  }
+  .hero h1 {
+    font-size: 26px; font-weight: 900; margin: 0 0 8px; line-height: 1.35;
+  }
+  .hero p.lead {
+    font-size: 13.5px; opacity: 0.95; margin: 0; line-height: 1.7;
+  }
+
+  /* ---------- Digit Reel (signature element) ---------- */
+  .reel-row {
+    display: flex; gap: 10px; justify-content: center; margin: 26px 0 6px;
+  }
+  .reel {
+    width: 64px; height: 78px;
+    background: linear-gradient(180deg, #fff 0%, var(--pink-100) 100%);
+    border-radius: 16px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Zen Maru Gothic', sans-serif;
+    font-size: 34px; font-weight: 900; color: var(--pink-700);
+    box-shadow: 0 6px 0 rgba(38, 40, 72, 0.28), 0 10px 20px rgba(0,0,0,0.15);
+    position: relative;
+  }
+  .reel-label {
+    text-align: center; font-size: 10.5px; margin-top: 6px; color: var(--pink-700);
+    font-weight: 700; opacity: 0.85;
+  }
+  .reel-labels { display: flex; gap: 10px; justify-content: center; }
+  .reel-labels .reel-label { width: 64px; }
+  @keyframes spin-digit {
+    0% { transform: translateY(0); opacity: 1; }
+    40% { transform: translateY(-14px); opacity: 0.2; }
+    41% { transform: translateY(14px); }
+    100% { transform: translateY(0); opacity: 1; }
+  }
+  .reel.spinning .digit { animation: spin-digit 0.28s ease-in-out; }
+
+  /* ---------- Cards / sections ---------- */
+  .section { margin-top: 22px; }
+  .section-title {
+    font-size: 15.5px; font-weight: 700; margin: 0 0 10px;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .section-title .dot {
+    width: 8px; height: 8px; border-radius: 50%; background: var(--pink-500);
+  }
+  .card {
+    background: var(--card);
+    border-radius: var(--radius-md);
+    padding: 16px 16px;
+    box-shadow: var(--shadow-soft);
+    border: 1px solid var(--pink-100);
+  }
+  .card + .card { margin-top: 12px; }
+
+  .month-select-row { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+  select {
+    font-family: 'Noto Sans JP', sans-serif;
+    padding: 8px 12px; border-radius: 100px; border: 1.5px solid var(--pink-300);
+    background: #fff; color: var(--plum-900); font-size: 13.5px; font-weight: 700;
+  }
+
+  .digit-chip-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .digit-chip {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg-alt); border-radius: 100px; padding: 6px 12px 6px 8px;
+    font-size: 13px; font-weight: 700;
+  }
+  .digit-chip .num {
+    width: 24px; height: 24px; border-radius: 50%;
+    background: var(--pink-500); color: #fff;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 900;
+  }
+  .digit-chip.rank1 .num { background: var(--gold-400); }
+  .digit-chip .sub { color: var(--plum-600); font-weight: 500; font-size: 11.5px; }
+
+  .pos-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .pos-col { text-align: center; }
+  .pos-col .pos-name { font-size: 11px; color: var(--plum-600); font-weight: 700; margin-bottom: 6px; }
+  .pos-col .pos-digit {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 30px; height: 30px; border-radius: 8px; margin: 2px;
+    background: var(--pink-100); font-weight: 900; font-size: 13px;
+  }
+
+  .pattern-bar-row { display: flex; align-items: center; gap: 8px; margin: 8px 0; }
+  .pattern-label { width: 70px; font-size: 12px; font-weight: 700; flex-shrink: 0; }
+  .pattern-bar-bg { flex: 1; height: 10px; background: var(--bg-alt); border-radius: 100px; overflow: hidden; }
+  .pattern-bar-fill { height: 100%; background: linear-gradient(90deg, var(--pink-300), var(--pink-500)); border-radius: 100px; }
+  .pattern-rate { font-size: 11.5px; font-weight: 700; color: var(--pink-700); width: 40px; text-align: right; }
+
+  .cold-list { display: flex; flex-direction: column; gap: 6px; }
+  .cold-row { display: flex; align-items: center; justify-content: space-between; font-size: 13px; }
+  .cold-row .badge {
+    background: var(--mint-400); color: #0d3a47; border-radius: 100px; padding: 2px 10px;
+    font-size: 11px; font-weight: 700;
+  }
+
+  .combo-stat-row { display: flex; justify-content: space-between; margin: 6px 0; font-size: 13px; }
+  .combo-stat-row b { color: var(--pink-700); }
+
+  p.note { font-size: 11.5px; color: var(--plum-600); line-height: 1.6; margin: 8px 0 0; }
+
+  /* ---------- Predictions ---------- */
+  .predict-btn {
+    width: 100%; padding: 16px; border: none; border-radius: 100px;
+    background: linear-gradient(90deg, var(--pink-500), var(--pink-700));
+    color: #fff; font-size: 15.5px; font-weight: 900; font-family: 'Zen Maru Gothic', sans-serif;
+    box-shadow: 0 8px 20px rgba(64,66,143,0.38);
+    cursor: pointer; margin-top: 4px;
+  }
+  .predict-btn:active { transform: translateY(1px); }
+  .predict-btn:disabled { opacity: 0.5; }
+
+  .pred-card {
+    background: linear-gradient(135deg, #fff, var(--pink-100));
+    border-radius: var(--radius-md); padding: 14px 16px; margin-top: 10px;
+    border: 1.5px solid var(--pink-300);
+  }
+  .pred-card .pred-type {
+    display: inline-block; font-size: 10.5px; font-weight: 700;
+    background: var(--pink-700); color: #fff; border-radius: 100px; padding: 2px 10px; margin-bottom: 8px;
+  }
+  .pred-card.rare .pred-type { background: var(--mint-400); color: #0d3a47; }
+  .pred-card.month .pred-type { background: var(--gold-400); color: #3a2e04; }
+  .pred-card.month { background: linear-gradient(135deg, #fff, #FBF3DC); border-color: var(--gold-400); }
+  .pred-card.rare { background: linear-gradient(135deg, #fff, #E4F3F7); border-color: var(--mint-400); }
+  .pred-card .pred-number {
+    font-family: 'Zen Maru Gothic', sans-serif; font-size: 32px; font-weight: 900;
+    letter-spacing: 0.15em; color: var(--pink-700);
+  }
+  .pred-card .pred-basis { font-size: 11.5px; color: var(--plum-600); margin-top: 6px; }
+
+  /* ---------- Monetization gate ---------- */
+  .gate-card {
+    background: var(--card); border-radius: var(--radius-lg); padding: 20px 18px;
+    box-shadow: var(--shadow-soft); border: 1.5px dashed var(--pink-300); text-align: center;
+  }
+  .gate-card h3 { margin: 0 0 8px; font-size: 16px; }
+  .gate-card p { font-size: 12.5px; color: var(--plum-600); margin: 0 0 14px; line-height: 1.7; }
+  .trial-btn {
+    display: inline-block; width: 100%; padding: 12px; border-radius: 100px; border: none;
+    background: var(--pink-500); color: #fff; font-weight: 700; font-size: 14px; cursor: pointer;
+  }
+  .key-input-row { display: flex; gap: 6px; margin-top: 12px; }
+  .key-input-row input {
+    flex: 1; padding: 10px 12px; border-radius: 100px; border: 1.5px solid var(--pink-300);
+    font-size: 13px;
+  }
+  .key-input-row button {
+    padding: 10px 16px; border-radius: 100px; border: none; background: var(--plum-900);
+    color: #fff; font-weight: 700; font-size: 12.5px; cursor: pointer;
+  }
+  .remaining-badge {
+    display: inline-block; font-size: 11.5px; font-weight: 700; color: var(--pink-700);
+    background: var(--pink-100); padding: 4px 12px; border-radius: 100px; margin-top: 10px;
+  }
+  .status-msg { font-size: 12px; margin-top: 8px; min-height: 16px; }
+  .status-msg.error { color: #C0392B; }
+  .status-msg.success { color: #1c7a4a; }
+
+  footer.app-footer {
+    text-align: center; margin-top: 40px; font-size: 11px; color: var(--plum-600);
+    line-height: 1.8;
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap" style="padding:0;">
+    <div class="brand-eyebrow">3秒AIシリーズ</div>
+    <h1>ナンバーズ3AI予想</h1>
+    <p class="lead">過去2年間の当選データをAIが総合分析。<br>高確率2・月特化2・穴場1の<br>計5パターンを導き出します。</p>
+
+    <div class="reel-row" id="heroReels">
+      <div class="reel" data-pos="hundred"><span class="digit">－</span></div>
+      <div class="reel" data-pos="ten"><span class="digit">－</span></div>
+      <div class="reel" data-pos="one"><span class="digit">－</span></div>
+    </div>
+    <div class="reel-labels">
+      <div class="reel-label">百の位</div>
+      <div class="reel-label">十の位</div>
+      <div class="reel-label">一の位</div>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- ============ 予想生成 ============ -->
+  <section class="section" id="predictSection">
+    <div class="section-title"><span class="dot"></span>AI予想を作成</div>
+    <div class="card">
+      <p style="font-size:12.5px; color:var(--plum-600); margin:0 0 12px; line-height:1.7;">
+        頻出数字を主軸にした「高確率」2パターン、購入月の傾向を主軸にした「月特化」2パターン、出現頻度の低い数字を狙う「穴場」1パターンの、計5パターンを生成します。
+      </p>
+      <div id="dataStatus" style="font-size:11px; color:var(--plum-600); margin-bottom:10px;">
+        📦 初期データ(2025-2026年の実績を埋め込み)を使用中
+      </div>
+      <button class="predict-btn" id="autoFetchBtn" style="background:linear-gradient(90deg,#8B90E0,var(--pink-700)); margin-bottom:10px;">🌐 最新データを自動取得(過去2年)</button>
+      <!-- ============ 原因特定用デバッグ ============ -->
+        <div class="debug-row" id="debugState">起動確認中...</div>
+        <div class="debug-row" id="debugWorkerKey">Workerキー: 確認中...</div>
+        <div id="debugLog"></div>
+      </div>
+
+      <script>
+      (function () {
+        // この監視は、stats-data.js / analysis.js / メインJSより先に起動します。
+        // そのため「ボタンにイベントが登録される前にJSエラーが起きた」場合も確認できます。
+          logs: [],
+          log: function (message, type) {
+            var now = new Date();
+            var time = now.toLocaleTimeString('ja-JP', { hour12: false });
+            var line = '[' + time + '] ' + message;
+            this.logs.push(line);
+            var el = document.getElementById('debugLog');
+            if (el) {
+              var div = document.createElement('div');
+                              type === 'warn' ? 'debug-warn' :
+              div.textContent = line;
+              el.appendChild(div);
+              el.scrollTop = el.scrollHeight;
+            }
+            var state = document.getElementById('debugState');
+            if (state) state.textContent = '状態: ' + message;
+          },
+          set: function (id, text, cls) {
+            var el = document.getElementById(id);
+            if (el) {
+              el.textContent = text;
+            }
+          }
+        };
+
+
+        window.addEventListener('error', function (event) {
+          var msg = event.message || '不明なJavaScriptエラー';
+            'JavaScriptエラー: ' + msg +
+            (event.filename ? ' / ' + event.filename.split('/').pop() : '') +
+            (event.lineno ? ' / 行:' + event.lineno : ''),
+            'error'
+          );
+        });
+
+        window.addEventListener('unhandledrejection', function (event) {
+          var reason = event.reason;
+          var msg = reason && reason.message ? reason.message : String(reason);
+        });
+
+        // メインJSが途中で止まっても、ボタン押下自体は検知する。
+        var autoBtn = document.getElementById('autoFetchBtn');
+        if (autoBtn) {
+          autoBtn.addEventListener('click', function () {
+          }, true);
+        } else {
+        }
+
+        var copyBtn = document.getElementById('debugCopyBtn');
+        if (copyBtn) {
+          copyBtn.addEventListener('click', async function () {
+            try {
+              await navigator.clipboard.writeText(text);
+            } catch (e) {
+            }
+          });
+        }
+      })();
+      </script>
+
+      <button class="predict-btn" id="predictBtn">✨ AI予想を作成する</button>
+      <div id="predictResults"></div>
+    </div>
+  </section>
+
+  <!-- ============ 課金ゲート ============ -->
+  <section class="section" id="gateSection" style="display:none;">
+    <div class="gate-card">
+      <h3>🎁 無料で1回お試しする</h3>
+      <p>会員登録不要。まずは1回、AI予想を無料でお試しいただけます。</p>
+      <button class="trial-btn" id="trialBtn">無料でお試しする</button>
+      <div class="key-input-row">
+        <input type="text" id="keyInput" placeholder="アクセスキーを入力 (NUM3-XXXX-XXXX)" />
+        <button id="keySubmitBtn">認証</button>
+      </div>
+      <div class="status-msg" id="gateStatus"></div>
+    </div>
+  </section>
+  <div id="remainingBadgeWrap" style="text-align:center; display:none;">
+    <span class="remaining-badge" id="remainingBadge"></span>
+  </div>
+
+  <!-- ============ 頻出数字(直近2年) ============ -->
+  <section class="section">
+    <div class="section-title"><span class="dot"></span>頻出数字ランキング(直近2年)</div>
+    <div class="card">
+      <div class="digit-chip-row" id="yearlyRankRow"></div>
+      <div class="pos-grid" id="yearlyPosGrid"></div>
+      <p class="note">2025年・2026年(第7045回時点)の実績データを集計。2026年のデータをやや重視して算出しています。</p>
+    </div>
+  </section>
+
+  <!-- ============ 購入月特化 ============ -->
+  <section class="section">
+    <div class="section-title"><span class="dot"></span>購入月に特化した頻出数字</div>
+    <div class="card">
+      <div class="month-select-row">
+        <label style="font-size:12.5px; font-weight:700;">対象月:</label>
+        <select id="monthSelect"></select>
+      </div>
+      <div class="digit-chip-row" id="monthlyRankRow"></div>
+      <div class="pos-grid" id="monthlyPosGrid"></div>
+      <p class="note">全期間の実績から、その月に出やすい/出にくい傾向を集計しています。</p>
+    </div>
+  </section>
+
+  <!-- ============ 偶数奇数パターン ============ -->
+  <section class="section">
+    <div class="section-title"><span class="dot"></span>偶数奇数の組合せパターン</div>
+    <div class="card" id="evenOddCard"></div>
+  </section>
+
+  <!-- ============ レア数字傾向 ============ -->
+  <section class="section">
+    <div class="section-title"><span class="dot"></span>出現頻度の少ない数字の傾向</div>
+    <div class="card">
+      <p style="font-size:12px; color:var(--plum-600); margin:0 0 10px;">直近20回で「しばらく出ていない数字」ほど、そろそろ出やすいと考える人もいます。</p>
+      <div class="cold-list" id="coldList"></div>
+    </div>
+  </section>
+
+  <!-- ============ 数字組合せパターン ============ -->
+  <section class="section">
+    <div class="section-title"><span class="dot"></span>数字の組合せパターン分析</div>
+    <div class="card" id="comboCard"></div>
+  </section>
+
+  <footer class="app-footer">
+    3秒AIキャディ・3秒AIナンバーズ3予想は「3秒AI」シリーズです。<br>
+    本アプリの予想は統計分析に基づく参考情報であり、当選を保証するものではありません。<br>
+    データ出典: NUMBERS3通信 (numbers3.money-plan.net)
+  </footer>
+</div>
+
+<script src="stats-data.js"></script>
+<script src="analysis.js"></script>
+<script>
+(function () {
+  // ==== 設定 ====
+  const API_BASE = 'https://numbers3-api.elcojpn2021.workers.dev';
+  const TRIAL_STORAGE_KEY = 'num3_trial_used';
+  const ACCESS_KEY_STORAGE = 'num3_access_key';
+  const WORKER_KEY_STORAGE = 'num3_worker_key'; // fetch-csv認証用(トライアル/有料どちらかのキーを保持)
+
+  // ==== ユーティリティ: Cookie ====
+  function setCookie(name, value, days) {
+    const d = new Date();
+    d.setTime(d.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = `${name}=${value};expires=${d.toUTCString()};path=/;SameSite=Lax`;
+  }
+  function getCookie(name) {
+    const match = document.cookie.match(new RegExp('(^| )' + name + '=([^;]+)'));
+    return match ? match[2] : null;
+  }
+
+  // ==== 動的統計データの状態 (初期値はstats-data.jsの埋め込みデータ) ====
+  const statsState = {
+    yearly: YEARLY_DATA,
+    monthly: MONTHLY_DATA,
+    evenOdd: EVEN_ODD_PATTERNS_STRAIGHT,
+    recent: RECENT_DRAWS,
+  };
+
+  // ==== CSVパース (taka-lat.com「LATサイト」のナンバーズ3 CSV形式) ====
+  // 列構成: 回別,抽選日,抽せん数字,口数(ストレート),口数(ボックス),... (以降は金額列などで桁区切りカンマを含む)
+  // 先頭3列(回別・抽選日・抽せん数字)にはカンマを含まないため、単純な位置ベース抽出で安全に取得できる。
+  function parseTakaLatCsv(text) {
+    const lines = String(text || '')
+      .replace(/^\uFEFF/, '')
+      .replace(/\r/g, '')
+      .split('\n')
+      .map((l) => l.trim())
+      .filter(Boolean);
+
+    const draws = [];
+    const seenRounds = new Set();
+
+    for (const line of lines) {
+      const fields = [];
+      let field = '';
+      let inQuotes = false;
+
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') {
+            field += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          fields.push(field.trim());
+          field = '';
+        } else {
+          field += ch;
+        }
+      }
+      fields.push(field.trim());
+
+      if (fields.length < 3) continue;
+
+      const round = parseInt(fields[0].trim(), 10);
+      const dateStr = fields[1].trim();
+      const numberStr = fields[2].trim();
+
+      if (!Number.isFinite(round)) continue;
+      if (seenRounds.has(round)) continue;
+
+      const dateMatch = dateStr.match(/^(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})$/);
+      if (!dateMatch) continue;
+
+      const date = new Date(
+        Number(dateMatch[1]),
+        Number(dateMatch[2]) - 1,
+        Number(dateMatch[3])
+      );
+
+      const numClean = numberStr.replace(/[^\d]/g, '');
+      if (!numClean) continue;
+
+      const number = numClean.padStart(3, '0').slice(-3);
+
+      seenRounds.add(round);
+      draws.push({ round, date, number });
+    }
+
+    draws.sort((a, b) => b.date - a.date || b.round - a.round);
+    return draws;
+  }
+
+  // ==== 分析データの描画 ====
+  const currentMonth = new Date().getMonth() + 1;
+
+  function renderYearlyRanking() {
+    const freq = getFrequentDigits(statsState.yearly);
+    const row = document.getElementById('yearlyRankRow');
+    row.innerHTML = '';
+    freq.overallRanking.slice(0, 5).forEach((item, i) => {
+      const chip = document.createElement('div');
+      chip.className = 'digit-chip' + (i === 0 ? ' rank1' : '');
+      chip.innerHTML = `<span class="num">${item.digit}</span><span class="sub">${i + 1}位</span>`;
+      row.appendChild(chip);
+    });
+
+    const posGrid = document.getElementById('yearlyPosGrid');
+    posGrid.innerHTML = '';
+    POSITIONS.forEach((pos) => {
+      const col = document.createElement('div');
+      col.className = 'pos-col';
+      const top3 = freq.positionRanking[pos].slice(0, 3).map((d) => d.digit);
+      col.innerHTML = `<div class="pos-name">${POSITION_LABEL[pos]}</div>` +
+        top3.map((d) => `<span class="pos-digit">${d}</span>`).join('');
+      posGrid.appendChild(col);
+    });
+  }
+
+  function renderMonthlyRanking(month) {
+    const monthly = getMonthlyFrequentDigits(statsState.monthly, month);
+    const row = document.getElementById('monthlyRankRow');
+    row.innerHTML = '';
+    monthly.overallRanking.slice(0, 5).forEach((item, i) => {
+      const chip = document.createElement('div');
+      chip.className = 'digit-chip' + (i === 0 ? ' rank1' : '');
+      chip.innerHTML = `<span class="num">${item.digit}</span><span class="sub">${i + 1}位</span>`;
+      row.appendChild(chip);
+    });
+
+    const posGrid = document.getElementById('monthlyPosGrid');
+    posGrid.innerHTML = '';
+    POSITIONS.forEach((pos) => {
+      const col = document.createElement('div');
+      col.className = 'pos-col';
+      const top3 = monthly.positionRanking[pos].slice(0, 3).map((d) => d.digit);
+      col.innerHTML = `<div class="pos-name">${POSITION_LABEL[pos]}</div>` +
+        top3.map((d) => `<span class="pos-digit">${d}</span>`).join('');
+      posGrid.appendChild(col);
+    });
+  }
+
+  function setupMonthSelect() {
+    const sel = document.getElementById('monthSelect');
+    for (let m = 1; m <= 12; m++) {
+      const opt = document.createElement('option');
+      opt.value = m;
+      opt.textContent = `${m}月`;
+      if (m === currentMonth) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    sel.addEventListener('change', () => renderMonthlyRanking(Number(sel.value)));
+    renderMonthlyRanking(currentMonth);
+  }
+
+  function renderEvenOdd() {
+    const top = getTopEvenOddPatterns(statsState.evenOdd, 8);
+    const card = document.getElementById('evenOddCard');
+    const maxRate = Math.max(...top.map((t) => t.rate));
+    card.innerHTML = '<p style="font-size:12px;color:var(--plum-600);margin:0 0 10px;">ストレート(百・十・一が完全一致)の偶奇パターン別出現率です。</p>';
+    top.forEach((p) => {
+      const label = p.pattern.map((x) => (x === 'E' ? '偶' : '奇')).join('-');
+      const row = document.createElement('div');
+      row.className = 'pattern-bar-row';
+      row.innerHTML = `
+        <div class="pattern-label">${label}</div>
+        <div class="pattern-bar-bg"><div class="pattern-bar-fill" style="width:${(p.rate / maxRate) * 100}%"></div></div>
+        <div class="pattern-rate">${p.rate}%</div>
+      `;
+      card.appendChild(row);
+    });
+  }
+
+  function renderColdDigits() {
+    const cold = getColdDigitsFromRecent(statsState.recent, 20);
+    const list = document.getElementById('coldList');
+    list.innerHTML = '';
+    cold.slice(0, 5).forEach((c) => {
+      const row = document.createElement('div');
+      row.className = 'cold-row';
+      row.innerHTML = `<span>数字 <b>${c.digit}</b></span><span class="badge">${c.roundsSinceSeen === 0 ? '直近で出現' : c.roundsSinceSeen + '回出ていません'}</span>`;
+      list.appendChild(row);
+    });
+  }
+
+  function renderCombo() {
+    const stats = getComboPatternStats(statsState.recent);
+    const card = document.getElementById('comboCard');
+    card.innerHTML = `
+      <p style="font-size:12px;color:var(--plum-600);margin:0 0 10px;">直近${stats.total}回の当選番号を分析(百・十・一の3桁の重複状況)。</p>
+      <div class="combo-stat-row"><span>3桁とも異なる数字</span><b>${stats.straight.count}回 (${stats.straight.rate}%)</b></div>
+      <div class="combo-stat-row"><span>2桁が同じ数字</span><b>${stats.double.count}回 (${stats.double.rate}%)</b></div>
+      <div class="combo-stat-row"><span>3桁ともゾロ目</span><b>${stats.triple.count}回 (${stats.triple.rate}%)</b></div>
+    `;
+  }
+
+  function renderAllStats() {
+    renderYearlyRanking();
+
+    const monthSelect = document.getElementById('monthSelect');
+    if (monthSelect && monthSelect.value) {
+      renderMonthlyRanking(Number(monthSelect.value));
+    }
+
+    renderEvenOdd();
+    renderColdDigits();
+    renderCombo();
+  }
+
+  // ==== 予想生成 & リール演出 ====
+  function spinReelsTo(numberStr) {
+    const reels = document.querySelectorAll('#heroReels .reel');
+    reels.forEach((reel, idx) => {
+      reel.classList.add('spinning');
+      setTimeout(() => {
+        reel.querySelector('.digit').textContent = numberStr[idx];
+        reel.classList.remove('spinning');
+      }, 150 + idx * 90);
+    });
+  }
+
+  function renderPredictions(predictions) {
+    const wrap = document.getElementById('predictResults');
+    wrap.innerHTML = '';
+    predictions.forEach((p) => {
+      const card = document.createElement('div');
+      const extraClass = p.type === '穴場' ? ' rare' : (p.type === '月特化' ? ' month' : '');
+      card.className = 'pred-card' + extraClass;
+      card.innerHTML = `
+        <span class="pred-type">${p.type}</span>
+        <div class="pred-number">${p.number}</div>
+        <div class="pred-basis">${p.basis}</div>
+      `;
+      wrap.appendChild(card);
+    });
+    spinReelsTo(predictions[0].number);
+  }
+
+  function runPrediction() {
+    const preds = generatePredictions(statsState.yearly, statsState.monthly, statsState.evenOdd, currentMonth);
+    renderPredictions(preds);
+  }
+
+  // ==== 課金/お試しロジック ====
+  function hasAccess() {
+    return !!(localStorage.getItem(ACCESS_KEY_STORAGE) || getCookie(ACCESS_KEY_STORAGE));
+  }
+  function hasUsedTrial() {
+    return localStorage.getItem(TRIAL_STORAGE_KEY) === '1' || getCookie(TRIAL_STORAGE_KEY) === '1';
+  }
+  function markTrialUsed() {
+    localStorage.setItem(TRIAL_STORAGE_KEY, '1');
+    setCookie(TRIAL_STORAGE_KEY, '1', 3650);
+  }
+  function saveAccessKey(key) {
+    localStorage.setItem(ACCESS_KEY_STORAGE, key);
+    setCookie(ACCESS_KEY_STORAGE, key, 3650);
+  }
+  function getWorkerKey() {
+    return localStorage.getItem(WORKER_KEY_STORAGE) || getCookie(WORKER_KEY_STORAGE) || '';
+  }
+  function saveWorkerKey(key) {
+    localStorage.setItem(WORKER_KEY_STORAGE, key);
+    setCookie(WORKER_KEY_STORAGE, key, 3650);
+  }
+  function showStatus(msg, type) {
+    const el = document.getElementById('gateStatus');
+    el.textContent = msg;
+    el.className = 'status-msg' + (type ? ' ' + type : '');
+  }
+  function showRemaining(n) {
+    const wrap = document.getElementById('remainingBadgeWrap');
+    const badge = document.getElementById('remainingBadge');
+    wrap.style.display = 'block';
+    badge.textContent = `残り利用回数: ${n}回`;
+  }
+
+  async function callApi(path, options) {
+    const res = await fetch(API_BASE + path, options);
+    return res.json();
+  }
+
+  // fetch-csv認証用のキーを確保する(既存の有料/トライアルキーがあれば流用、なければサーバーで新規発行)
+  async function ensureWorkerKey() {
+    const existing = getWorkerKey();
+    if (existing) return existing;
+
+    const paid = localStorage.getItem(ACCESS_KEY_STORAGE) || getCookie(ACCESS_KEY_STORAGE);
+    if (paid) {
+      saveWorkerKey(paid);
+      return paid;
+    }
+
+    const result = await callApi('/api/trial', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({}),
+    });
+
+    if (result.ok && result.key) {
+      saveWorkerKey(result.key);
+      return result.key;
+    }
+
+    throw new Error('認証キーの取得に失敗しました: ' + JSON.stringify(result));
+  }
+
+  // ==== Webから自動取得 ====
+  function initAutoFetch() {
+    const btn = document.getElementById('autoFetchBtn');
+    const dataStatus = document.getElementById('dataStatus');
+    if (!btn) return;
+
+    const originalText = btn.textContent;
+
+    btn.addEventListener('click', async () => {
+      btn.disabled = true;
+      btn.textContent = '取得中...';
+      dataStatus.textContent = '🔄 自動取得処理を開始しました...';
+      dataStatus.style.color = '#40428F';
+
+      try {
+        const key = await ensureWorkerKey();
+
+        const result = await callApi('/api/fetch-csv', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key }),
+        });
+
+        if (!result.ok) {
+          throw new Error(result.error || 'CSV取得に失敗しました');
+        }
+
+        const allDraws = parseTakaLatCsv(result.csv);
+        if (allDraws.length < 10) {
+          throw new Error('取得データが少なすぎます');
+        }
+
+        const twoYearsAgo = new Date();
+        twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2);
+
+        const filtered = allDraws.filter((d) => d.date >= twoYearsAgo);
+        const draws = filtered.length >= 10 ? filtered : allDraws;
+
+        statsState.yearly = buildYearlyDataFromDraws(draws);
+        statsState.monthly = buildMonthlyDataFromDraws(draws);
+        statsState.evenOdd = buildEvenOddPatternsFromDraws(draws);
+        statsState.recent = buildRecentDrawsFromDraws(draws, 20);
+
+        renderAllStats();
+
+        const now = new Date();
+        const stamp =
+          `${now.getFullYear()}/${now.getMonth() + 1}/${now.getDate()} ` +
+          `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+        dataStatus.textContent =
+          `🌐 Web自動取得完了(${draws.length}回分・過去2年) — 最終更新: ${stamp}`;
+        dataStatus.style.color = '#1c7a4a';
+
+      } catch (e) {
+        const msg = e && e.message ? e.message : String(e);
+        dataStatus.textContent = '⚠️ 自動取得に失敗しました: ' + msg;
+        dataStatus.style.color = '#C0392B';
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    });
+  }
+
+  function initGate() {
+    const predictBtn = document.getElementById('predictBtn');
+    const gateSection = document.getElementById('gateSection');
+
+    if (hasAccess()) {
+      gateSection.style.display = 'none';
+      predictBtn.disabled = false;
+    } else if (!hasUsedTrial()) {
+      // まだ何も使っていない → 予想ボタン自体はお試し用に1回だけ許可
+      predictBtn.disabled = false;
+    } else {
+      predictBtn.disabled = true;
+      gateSection.style.display = 'block';
+      showStatus('無料お試しは使用済みです。クーポンをお持ちの方はアクセスキーと交換してご利用ください。', '');
+    }
+
+    predictBtn.addEventListener('click', async () => {
+      if (hasAccess()) {
+        runPrediction();
+        return;
+      }
+      if (!hasUsedTrial()) {
+        try { await ensureWorkerKey(); } catch (e) { /* 取得失敗しても予想自体はローカルで続行 */ }
+        markTrialUsed();
+        runPrediction();
+        predictBtn.disabled = true;
+        gateSection.style.display = 'block';
+        showStatus('無料お試しをご利用いただきました。続けて利用するにはアクセスキーが必要です。', '');
+        return;
+      }
+      gateSection.style.display = 'block';
+    });
+
+    document.getElementById('trialBtn').addEventListener('click', async () => {
+      if (hasUsedTrial()) {
+        showStatus('無料お試しは既にご利用済みです。', 'error');
+        return;
+      }
+      try { await ensureWorkerKey(); } catch (e) { /* no-op */ }
+      markTrialUsed();
+      runPrediction();
+      document.getElementById('trialBtn').disabled = true;
+      showStatus('無料お試しをご利用いただきました。ありがとうございます！', 'success');
+    });
+
+    document.getElementById('keySubmitBtn').addEventListener('click', async () => {
+      const input = document.getElementById('keyInput');
+      const key = input.value.trim();
+      if (!key) { showStatus('アクセスキーを入力してください。', 'error'); return; }
+      try {
+        const result = await callApi('/api/validate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key }),
+        });
+        if (result.ok) {
+          saveAccessKey(key);
+          saveWorkerKey(key);
+          predictBtn.disabled = false;
+          gateSection.style.display = 'none';
+          showRemaining(result.remaining);
+          runPrediction();
+        } else {
+          showStatus('キーが無効か、利用回数を使い切っています。', 'error');
+        }
+      } catch (e) {
+        showStatus('通信エラーが発生しました。時間をおいて再度お試しください。', 'error');
+      }
+    });
+  }
+
+  // ==== 初期化 ====
+  setupMonthSelect();
+  renderAllStats();
+  initAutoFetch();
+  initGate();
+})();
+</script>
+
+</body>
+</html>
