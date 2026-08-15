@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ナンバーズ3AI予想 - 管理ページ</title>
+<style>
+  :root {
+    --bg: #F3F4FC; --card: #fff; --ink: #262848; --sub: #565A82;
+    --accent: #40428F; --accent-light: #E1E3FA; --danger: #C0392B; --ok: #1c7a4a;
+    --border: #D6D8F2;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, 'Hiragino Sans', 'Noto Sans JP', sans-serif;
+    background: var(--bg); color: var(--ink); padding: 20px 16px 60px;
+  }
+  .wrap { max-width: 520px; margin: 0 auto; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  p.sub { font-size: 12.5px; color: var(--sub); margin: 0 0 20px; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px; margin-bottom: 16px;
+  }
+  .card h2 { font-size: 14px; margin: 0 0 10px; }
+  label { font-size: 12px; font-weight: 700; color: var(--sub); display: block; margin-bottom: 4px; }
+  input[type="password"], input[type="text"] {
+    width: 100%; padding: 10px 12px; border: 1.5px solid var(--border); border-radius: 8px;
+    font-size: 14px; margin-bottom: 10px;
+  }
+  button {
+    padding: 10px 16px; border: none; border-radius: 8px; background: var(--accent);
+    color: #fff; font-weight: 700; font-size: 13.5px; cursor: pointer;
+  }
+  button.secondary { background: #fff; color: var(--accent); border: 1.5px solid var(--accent); }
+  button:disabled { opacity: 0.5; }
+  .row { display: flex; gap: 8px; }
+  .row > * { flex: 1; }
+  .status { font-size: 12.5px; margin-top: 8px; min-height: 16px; }
+  .status.error { color: var(--danger); }
+  .status.ok { color: var(--ok); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; margin-top: 10px; }
+  th, td { text-align: left; padding: 6px 4px; border-bottom: 1px solid var(--border); }
+  th { color: var(--sub); font-weight: 700; }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 100px; font-size: 10.5px; font-weight: 700; }
+  .badge.used { background: #FBE4E4; color: var(--danger); }
+  .badge.unused { background: #E1F5EA; color: var(--ok); }
+  .coupon-code {
+    font-family: 'SF Mono', Menlo, monospace; font-size: 15px; font-weight: 700;
+    background: var(--accent-light); padding: 8px 12px; border-radius: 8px; margin-top: 8px;
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  }
+  .coupon-code button { flex-shrink: 0; padding: 6px 10px; font-size: 11.5px; }
+  #mainArea { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🔑 ナンバーズ3AI予想 - 管理ページ</h1>
+  <p class="sub">クーポンコードの発行・一覧確認を行います。このページのリンクは第三者に共有しないでください。</p>
+
+  <div class="card" id="loginCard">
+    <h2>管理者パスワード</h2>
+    <input type="password" id="adminPass" placeholder="ADMIN_PASS を入力" />
+    <button id="loginBtn">ログイン</button>
+    <div class="status" id="loginStatus"></div>
+  </div>
+
+  <div id="mainArea">
+    <div class="card">
+      <h2>🎟️ 新しいクーポンを発行</h2>
+      <label>クーポンコード(空欄なら自動生成)</label>
+      <div class="row">
+        <input type="text" id="couponCodeInput" autocapitalize="characters" placeholder="例: N3C-7K2Q-9XPL(空欄OK)" />
+        <button id="issueBtn" style="flex:0 0 auto;">発行</button>
+      </div>
+      <div id="issueResult"></div>
+      <div class="status" id="issueStatus"></div>
+    </div>
+
+    <div class="card">
+      <h2>📋 発行済みクーポン一覧</h2>
+      <button class="secondary" id="refreshListBtn">一覧を更新</button>
+      <div class="status" id="listStatus"></div>
+      <table id="couponTable" style="display:none;">
+        <thead><tr><th>クーポンコード</th><th>状態</th><th>交換後のキー</th></tr></thead>
+        <tbody id="couponTableBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  const API_BASE = 'https://numbers3-api.elcojpn2021.workers.dev'; // ← Worker URLに合わせて変更してください
+  const PASS_STORAGE = 'num3_admin_pass';
+
+  function el(id) { return document.getElementById(id); }
+  function setStatus(id, msg, type) {
+    const e = el(id);
+    e.textContent = msg;
+    e.className = 'status' + (type ? ' ' + type : '');
+  }
+
+  function getPass() {
+    return sessionStorage.getItem(PASS_STORAGE) || '';
+  }
+
+  async function api(path, options) {
+    const res = await fetch(API_BASE + path, options);
+    let data = {};
+    try { data = await res.json(); } catch (e) { /* noop */ }
+    return { httpOk: res.ok, ...data };
+  }
+
+  async function tryLogin(pass) {
+    // list-coupons を叩いて認証確認を兼ねる
+    const result = await api('/api/admin/list-coupons?admin_pass=' + encodeURIComponent(pass), { method: 'GET' });
+    return result;
+  }
+
+  async function refreshList() {
+    setStatus('listStatus', '読み込み中...', '');
+    const result = await tryLogin(getPass());
+    if (!result.ok) {
+      setStatus('listStatus', '一覧の取得に失敗しました。', 'error');
+      return;
+    }
+    const table = el('couponTable');
+    const body = el('couponTableBody');
+    body.innerHTML = '';
+    if (!result.coupons || result.coupons.length === 0) {
+      setStatus('listStatus', 'まだクーポンが発行されていません。', '');
+      table.style.display = 'none';
+      return;
+    }
+    result.coupons.forEach((c) => {
+      const tr = document.createElement('tr');
+      const badge = c.used ? '<span class="badge used">使用済</span>' : '<span class="badge unused">未使用</span>';
+      tr.innerHTML = `<td>${c.coupon}</td><td>${badge}</td><td>${c.accessKey || '-'}</td>`;
+      body.appendChild(tr);
+    });
+    table.style.display = 'table';
+    setStatus('listStatus', `${result.coupons.length}件のクーポンがあります。`, 'ok');
+  }
+
+  el('loginBtn').addEventListener('click', async () => {
+    const pass = el('adminPass').value;
+    if (!pass) { setStatus('loginStatus', 'パスワードを入力してください。', 'error'); return; }
+    setStatus('loginStatus', '確認しています...', '');
+    const result = await tryLogin(pass);
+    if (!result.ok) {
+      setStatus('loginStatus', 'パスワードが違います。', 'error');
+      return;
+    }
+    sessionStorage.setItem(PASS_STORAGE, pass);
+    el('loginCard').style.display = 'none';
+    el('mainArea').style.display = 'block';
+    refreshList();
+  });
+
+  el('issueBtn').addEventListener('click', async () => {
+    const codeInput = el('couponCodeInput');
+    const coupon = codeInput.value.trim();
+    el('issueBtn').disabled = true;
+    setStatus('issueStatus', '発行しています...', '');
+    try {
+      const result = await api('/api/admin/add-coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_pass: getPass(), coupon }),
+      });
+      if (!result.ok) {
+        setStatus('issueStatus', result.error === 'coupon_already_exists' ? 'このクーポンコードは既に存在します。' : '発行に失敗しました。', 'error');
+        return;
+      }
+      codeInput.value = '';
+      setStatus('issueStatus', '発行しました。', 'ok');
+      const box = el('issueResult');
+      box.innerHTML = `<div class="coupon-code"><span>${result.coupon}</span><button id="copyBtn">コピー</button></div>`;
+      document.getElementById('copyBtn').addEventListener('click', () => {
+        navigator.clipboard.writeText(result.coupon).then(() => setStatus('issueStatus', 'コピーしました。', 'ok'));
+      });
+      refreshList();
+    } catch (e) {
+      setStatus('issueStatus', '通信エラーが発生しました。', 'error');
+    } finally {
+      el('issueBtn').disabled = false;
+    }
+  });
+
+  el('refreshListBtn').addEventListener('click', refreshList);
+
+  // セッション内にパスワードが残っていれば自動ログイン
+  if (getPass()) {
+    el('loginCard').style.display = 'none';
+    el('mainArea').style.display = 'block';
+    refreshList();
+  }
+})();
+</script>
+</body>
+</html>
